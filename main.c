@@ -27,7 +27,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
             screenBitmapHeader.biCompression = BI_RGB;
             screenBitmapInfo.bmiHeader = screenBitmapHeader;
 
-            /* The bitmap has a maximum of 2^32 colors. If the biCompression member is BI_RGB, the bmiColors member is NULL.
+            /* "The bitmap has a maximum of 2^32 colors. If the biCompression member is BI_RGB, the bmiColors member is NULL"
              * https://learn.microsoft.com/en-us/windows/win32/wmdm/-bitmapinfoheader
              * 
              * screenBitmapInfo.bmiColors[0].rgbRed = 0xFF;
