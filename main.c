@@ -5,6 +5,9 @@
 
 #define SCREEN_HANDLE NULL
 #define BITS_PER_BYTE 8
+#define BMP_FILE_SIGNATURE 0x4D42
+#define MAX_FORMATTED_DATE_LENGTH 100
+#define DOT_BMP_LENGTH 4
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR commandLine, int showCommand) {
     /* TODO: Error handling (checking return values, etc.)
@@ -60,27 +63,34 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
                 {
                     BOOL bitBlockTransferSucceeded = BitBlt(screenCompatibleDeviceContext, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, screenDeviceContext, 0, 0, SRCCOPY);
 
-                    printf("Red: %x\n", (screenCaptureBits[0] & 0x00FF0000) >> (8 * 2));
-                    printf("Green: %x\n", (screenCaptureBits[0] & 0x0000FF00) >> (8 * 1));
-                    printf("Blue: %x\n", (screenCaptureBits[0] & 0x000000FF) >> (8 * 0));
+                    SYSTEMTIME time;
+                    GetLocalTime(&time);
+                    char screenshotName[MAX_FORMATTED_DATE_LENGTH + DOT_BMP_LENGTH];
+                    /* https://stackoverflow.com/questions/153890/printing-leading-0s-in-c
+                     * https://www.ibm.com/docs/en/workload-automation/10.2.2?topic=troubleshooting-date-time-format-reference-strftime
+                     */
+                    snprintf(screenshotName, sizeof(screenshotName),
+                             "%d-%02d-%02d %02d:%02d:%02d.%03d.bmp",
+                             time.wYear, time.wMonth, time.wDay,
+                             time.wHour, time.wMinute, time.wSecond,
+                             time.wMilliseconds);
 
                     /* https://learn.microsoft.com/en-us/windows/win32/gdi/storing-an-image
                      */
-                    HANDLE imageFile = CreateFile("screenshot.bmp", GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+                    HANDLE imageFile = CreateFile(screenshotName, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
                     {
                         /* Start writing the bitmap to a file in "BMP file format"
                          * Review the "File structure" section below for more information.
                          * https://en.wikipedia.org/wiki/BMP_file_format
                          */
                         BITMAPFILEHEADER bitmapFileHeader = {0};
-                        bitmapFileHeader.bfType = 0x4D42; /* File signature for bmp */
+                        bitmapFileHeader.bfType = BMP_FILE_SIGNATURE;
                         /* https://stackoverflow.com/questions/25713117/what-is-the-difference-between-bisizeimage-bisize-and-bfsize
                          */
                         bitmapFileHeader.bfSize = sizeof(bitmapFileHeader) + screenBitmapHeader.biSize + screenBitmapHeader.biSizeImage;
                         bitmapFileHeader.bfReserved1 = 0;
                         bitmapFileHeader.bfReserved2 = 0;
                         bitmapFileHeader.bfOffBits = sizeof(bitmapFileHeader) + screenBitmapHeader.biSize;
-
 
                         BOOL fileWritten;
                         DWORD bytesWritten = 0;
