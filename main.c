@@ -25,11 +25,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
             screenBitmapHeader.biPlanes = 1;
             screenBitmapHeader.biBitCount = 32;
             screenBitmapHeader.biCompression = BI_RGB;
-
             screenBitmapInfo.bmiHeader = screenBitmapHeader;
-            screenBitmapInfo.bmiColors[0].rgbRed = 0xFF;
-            screenBitmapInfo.bmiColors[1].rgbGreen = 0xFF;
-            screenBitmapInfo.bmiColors[2].rgbBlue = 0xFF;
+
+            /* The bitmap has a maximum of 2^32 colors. If the biCompression member is BI_RGB, the bmiColors member is NULL.
+             * https://learn.microsoft.com/en-us/windows/win32/wmdm/-bitmapinfoheader
+             * 
+             * screenBitmapInfo.bmiColors[0].rgbRed = 0xFF;
+             * screenBitmapInfo.bmiColors[1].rgbGreen = 0xFF;
+             * screenBitmapInfo.bmiColors[2].rgbBlue = 0xFF;
+             */
 
             uint32_t *screenCaptureBits;
             HBITMAP screenCaptureBitmap = CreateDIBSection(screenCompatibleDeviceContext, &screenBitmapInfo, DIB_RGB_COLORS, (void **) &screenCaptureBits, NULL, 0);
