@@ -25,12 +25,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
             BITMAPINFOHEADER screenBitmapHeader = {0};
             screenBitmapHeader.biSize = sizeof(screenBitmapHeader);
             screenBitmapHeader.biWidth = SCREEN_WIDTH;
-            /* NOTE: Temporarily changed "biHeight" to +SCREEN_HEIGHT instead of -SCREEN_HEIGHT.
-             * This was done so that the image would not appear flipped when writing the bitmap out to a file.
-             */
-            /* screenBitmapHeader.biHeight = -SCREEN_HEIGHT;
-             */
-            screenBitmapHeader.biHeight = SCREEN_HEIGHT;
+            screenBitmapHeader.biHeight = -SCREEN_HEIGHT;
             screenBitmapHeader.biPlanes = 1;
             screenBitmapHeader.biBitCount = 32;
             screenBitmapHeader.biCompression = BI_RGB;
@@ -95,8 +90,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
                         BOOL fileWritten;
                         DWORD bytesWritten = 0;
                         fileWritten = WriteFile(imageFile, &bitmapFileHeader, sizeof(bitmapFileHeader), &bytesWritten, NULL);
+                        screenBitmapHeader.biHeight = SCREEN_HEIGHT;    /* Reassign positive height before writing bitmap info out to a file. */
                         fileWritten = WriteFile(imageFile, &screenBitmapHeader, sizeof(screenBitmapHeader), &bytesWritten, NULL);
-                        fileWritten = WriteFile(imageFile, screenCaptureBits, screenBitmapHeader.biSizeImage, &bytesWritten, NULL);
+
+                        DWORD imageBytesWritten = 0;
+                        for (int y = SCREEN_HEIGHT - 1; y >= 0; y--) {
+                            fileWritten = WriteFile(imageFile, &screenCaptureBits[y * SCREEN_WIDTH + 0], SCREEN_WIDTH * sizeof(screenCaptureBits[0]), &bytesWritten, NULL);
+                            imageBytesWritten += bytesWritten;
+                        }
+                        assert(imageBytesWritten == screenBitmapHeader.biSizeImage);
                     }
                     BOOL fileHandleClosed = CloseHandle(imageFile);
                 }
