@@ -88,8 +88,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
                      * https://www.ibm.com/docs/en/workload-automation/10.2.2?topic=troubleshooting-date-time-format-reference-strftime
                      */
 
+                    /* TODO: Update file name format to be Windows and Linux compatible.
+                     * For this to work, Linux can run Wine.
+                     */
                     snprintf(screenshotName, sizeof(screenshotName),
-                             "%d-%02d-%02d %02d:%02d:%02d.%03d.bmp",
+                             "%d-%02d-%02d_%02d;%02d;%02d.%03d.bmp",
                              time.wYear, time.wMonth, time.wDay,
                              time.wHour, time.wMinute, time.wSecond,
                              time.wMilliseconds);
