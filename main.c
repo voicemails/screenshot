@@ -9,6 +9,29 @@
 #define MAX_FORMATTED_DATE_LENGTH 100
 #define DOT_BMP_LENGTH 4
 
+LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lParameter) {
+    switch(message) {
+        case WM_KEYDOWN:
+            if (wParameter == VK_ESCAPE) {
+                printf("Escape key was pressed. Closing the window now...\n");
+                PostMessage(window, WM_CLOSE, NULL, NULL);
+            }
+            break;
+
+        case WM_CLOSE:
+            DestroyWindow(window);
+            break;
+
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            break;
+
+        default:
+            return DefWindowProc(window, message, wParameter, lParameter);
+    }
+    return 0;
+}
+
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR commandLine, int showCommand) {
     /* TODO: Error handling (checking return values, etc.)
      */
@@ -64,11 +87,30 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
                     /* https://stackoverflow.com/questions/153890/printing-leading-0s-in-c
                      * https://www.ibm.com/docs/en/workload-automation/10.2.2?topic=troubleshooting-date-time-format-reference-strftime
                      */
+
                     snprintf(screenshotName, sizeof(screenshotName),
                              "%d-%02d-%02d %02d:%02d:%02d.%03d.bmp",
                              time.wYear, time.wMonth, time.wDay,
                              time.wHour, time.wMinute, time.wSecond,
                              time.wMilliseconds);
+
+
+                    WNDCLASS windowClass = {0};
+                    windowClass.lpfnWndProc = WindowProcedure;
+                    windowClass.hInstance = instance;
+                    windowClass.lpszClassName = "Screenshot Class";
+                    RegisterClass(&windowClass);
+                    HWND fullscreenWindow = CreateWindow(windowClass.lpszClassName, "Full Screenshot", 
+                                                         WS_POPUP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
+                                                         NULL, NULL, windowClass.hInstance, NULL);
+
+                    BOOL windowShown;
+                    windowShown = ShowWindow(fullscreenWindow, showCommand);
+                    MSG message;
+                    while (GetMessage(&message, fullscreenWindow, 0, 0) > 0) {
+                        TranslateMessage(&message);
+                        DispatchMessage(&message);
+                    }
 
                     /* https://learn.microsoft.com/en-us/windows/win32/gdi/storing-an-image
                      */
