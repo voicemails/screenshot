@@ -8,13 +8,60 @@
 #define BMP_FILE_SIGNATURE 0x4D42
 #define MAX_FORMATTED_DATE_LENGTH 100
 #define DOT_BMP_LENGTH 4
+#define BRIGHTNESS_FACTOR 0.5
+
+int SCREEN_WIDTH;
+int SCREEN_HEIGHT;
+int SCREEN_AREA;
+
+HDC screenCompatibleDeviceContext;
+uint32_t *screenCaptureBits;
 
 LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lParameter) {
     switch(message) {
+        case WM_PAINT:
+            {
+                PAINTSTRUCT paint;
+                HDC windowDeviceContext = BeginPaint(window, &paint);
+
+                uint32_t *dimmedScreenBits = (uint32_t *) malloc(sizeof(uint32_t) * SCREEN_WIDTH * SCREEN_HEIGHT);
+
+                uint8_t *blue;
+                uint8_t *green;
+                uint8_t *red;
+
+                for (int y = 0; y < SCREEN_HEIGHT; y++) {
+                    for (int x = 0; x < SCREEN_WIDTH; x++) {
+                        int i = y * SCREEN_WIDTH + x;
+                        dimmedScreenBits[i] = screenCaptureBits[i];
+
+                        blue = ((uint8_t *) &dimmedScreenBits[i]) + 0;
+                        green = ((uint8_t *) &dimmedScreenBits[i]) + 1;
+                        red = ((uint8_t *) &dimmedScreenBits[i]) + 2;
+
+                        *blue = *blue * BRIGHTNESS_FACTOR;
+                        *green = *green * BRIGHTNESS_FACTOR;
+                        *red = *red * BRIGHTNESS_FACTOR;
+                    }
+                }
+
+                HBITMAP dimmedScreenBitmap = CreateBitmap(SCREEN_WIDTH, SCREEN_HEIGHT, 1, 32, dimmedScreenBits);
+                HBITMAP screenCaptureBitmap = SelectObject(screenCompatibleDeviceContext, dimmedScreenBitmap);
+
+                BOOL bitBlockTransferSucceeded = BitBlt(windowDeviceContext, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, screenCompatibleDeviceContext, 0, 0, SRCCOPY);
+
+                assert(dimmedScreenBitmap == SelectObject(screenCompatibleDeviceContext, screenCaptureBitmap));
+                DeleteObject(dimmedScreenBitmap);
+
+                free(dimmedScreenBits);
+                EndPaint(window, &paint);
+
+            } break;
+
         case WM_KEYDOWN:
             if (wParameter == VK_ESCAPE) {
                 printf("Escape key was pressed. Closing the window now...\n");
-                PostMessage(window, WM_CLOSE, NULL, NULL);
+                PostMessage(window, WM_CLOSE, (WPARAM) NULL, (LPARAM) NULL);
             }
             break;
 
@@ -33,15 +80,14 @@ LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lPa
 }
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR commandLine, int showCommand) {
+    SCREEN_WIDTH = GetSystemMetrics(SM_CXSCREEN);
+    SCREEN_HEIGHT = GetSystemMetrics(SM_CYSCREEN);
+    SCREEN_AREA = SCREEN_WIDTH * SCREEN_HEIGHT;
     /* TODO: Error handling (checking return values, etc.)
      */
-    const int SCREEN_WIDTH = GetSystemMetrics(SM_CXSCREEN);
-    const int SCREEN_HEIGHT = GetSystemMetrics(SM_CYSCREEN);
-    const int SCREEN_AREA = SCREEN_WIDTH * SCREEN_HEIGHT;
-
     HDC screenDeviceContext = GetDC(SCREEN_HANDLE);
     {
-        HDC screenCompatibleDeviceContext = CreateCompatibleDC(screenDeviceContext);
+        screenCompatibleDeviceContext = CreateCompatibleDC(screenDeviceContext);
         {
             BITMAPINFO screenBitmapInfo = {0};
 
@@ -63,7 +109,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
              * https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfoheader
              */
 
-
             screenBitmapInfo.bmiHeader = screenBitmapHeader;
 
             /* "The bitmap has a maximum of 2^32 colors. If the biCompression member is BI_RGB, the bmiColors member is NULL"
@@ -74,7 +119,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
              * screenBitmapInfo.bmiColors[2].rgbBlue = 0xFF;
              */
 
-            uint32_t *screenCaptureBits;
             HBITMAP screenCaptureBitmap = CreateDIBSection(screenCompatibleDeviceContext, &screenBitmapInfo, DIB_RGB_COLORS, (void **) &screenCaptureBits, NULL, 0);
             {
                 HBITMAP replacedBitmap = SelectObject(screenCompatibleDeviceContext, screenCaptureBitmap);
