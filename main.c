@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <windowsx.h>
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,17 +11,25 @@
 #define DOT_BMP_LENGTH 4
 #define BRIGHTNESS_FACTOR 0.5
 
+#define MIN(l, r) ((l) < (r) ? (l) : (r))
+#define MAX(l, r) ((l) < (r) ? (r) : (l))
+
 int SCREEN_WIDTH;
 int SCREEN_HEIGHT;
 int SCREEN_AREA;
 
 HDC screenCompatibleDeviceContext;
 uint32_t *screenCaptureBits;
+POINT mouseDown = { .x = -1, .y = -1 };
+POINT mouseUp = { .x = -1, .y = -1 };
 
 LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lParameter) {
     switch(message) {
         case WM_PAINT:
             {
+                RECT clientRectangle;
+                BOOL rectangleRetrieved = GetClientRect(window, &clientRectangle);
+
                 PAINTSTRUCT paint;
                 HDC windowDeviceContext = BeginPaint(window, &paint);
 
@@ -34,6 +43,11 @@ LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lPa
                     for (int x = 0; x < SCREEN_WIDTH; x++) {
                         int i = y * SCREEN_WIDTH + x;
                         dimmedScreenBits[i] = screenCaptureBits[i];
+
+                        if (x >= MIN(mouseDown.x, mouseUp.x) && x <= MAX(mouseDown.x, mouseUp.x) &&
+                            y >= MIN(mouseDown.y, mouseUp.y) && y <= MAX(mouseDown.y, mouseUp.y)) {
+                            continue;
+                        }
 
                         blue = ((uint8_t *) &dimmedScreenBits[i]) + 0;
                         green = ((uint8_t *) &dimmedScreenBits[i]) + 1;
@@ -58,12 +72,24 @@ LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lPa
 
             } break;
 
+        case WM_LBUTTONDOWN:
+            mouseDown.x = GET_X_LPARAM(lParameter);
+            mouseDown.y = GET_Y_LPARAM(lParameter);
+            break;
+
+        case WM_LBUTTONUP:
+            mouseUp.x = GET_X_LPARAM(lParameter);
+            mouseUp.y = GET_Y_LPARAM(lParameter);
+            InvalidateRect(window, NULL, TRUE);
+            UpdateWindow(window);
+            break;
+
+
         case WM_KEYDOWN:
             if (wParameter == VK_ESCAPE) {
                 printf("Escape key was pressed. Closing the window now...\n");
                 PostMessage(window, WM_CLOSE, (WPARAM) NULL, (LPARAM) NULL);
             }
-            break;
 
         case WM_CLOSE:
             DestroyWindow(window);
