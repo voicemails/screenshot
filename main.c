@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <windowsx.h>
+
 #include <assert.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -10,6 +11,8 @@
 #define MAX_FORMATTED_DATE_LENGTH 100
 #define DOT_BMP_LENGTH 4
 #define BRIGHTNESS_FACTOR 0.5
+
+#define S_KEY 0x53
 
 #define MIN(l, r) ((l) < (r) ? (l) : (r))
 #define MAX(l, r) ((l) < (r) ? (r) : (l))
@@ -22,6 +25,8 @@ HDC screenCompatibleDeviceContext;
 uint32_t *screenCaptureBits;
 POINT mouseDown = { .x = -1, .y = -1 };
 POINT mouseUp = { .x = -1, .y = -1 };
+
+BOOL saveScreenshot = FALSE;
 
 LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lParameter) {
     switch(message) {
@@ -87,9 +92,13 @@ LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lPa
 
         case WM_KEYDOWN:
             if (wParameter == VK_ESCAPE) {
-                printf("Escape key was pressed. Closing the window now...\n");
                 PostMessage(window, WM_CLOSE, (WPARAM) NULL, (LPARAM) NULL);
             }
+            else if (wParameter == S_KEY) {
+                PostMessage(window, WM_CLOSE, (WPARAM) NULL, (LPARAM) NULL);
+                saveScreenshot = TRUE;
+            }
+            break;
 
         case WM_CLOSE:
             DestroyWindow(window);
@@ -184,6 +193,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
                     while (GetMessage(&message, fullscreenWindow, 0, 0) > 0) {
                         TranslateMessage(&message);
                         DispatchMessage(&message);
+                    }
+
+                    if (!saveScreenshot) {
+                        return 0;
                     }
 
                     /* https://learn.microsoft.com/en-us/windows/win32/gdi/storing-an-image
