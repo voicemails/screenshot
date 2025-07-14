@@ -146,6 +146,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
                     windowClass.lpfnWndProc = WindowProcedure;
                     windowClass.hInstance = instance;
                     windowClass.lpszClassName = "Screenshot Class";
+                    windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
                     RegisterClass(&windowClass);
                     HWND fullscreenWindow = CreateWindow(windowClass.lpszClassName, "Full Screenshot", 
                                                          WS_POPUP, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT,
