@@ -27,6 +27,10 @@ POINT mouseDown = { .x = -1, .y = -1 };
 POINT mouseUp = { .x = -1, .y = -1 };
 
 BOOL saveScreenshot = FALSE;
+RECT partialScreenshot = { .left = -1, .top = -1, .right = -1, .bottom = -1 };
+int screenshotWidth = -1;
+int screenshotHeight = -1;
+int screenshotArea = -1;
 
 LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lParameter) {
     switch(message) {
@@ -87,6 +91,17 @@ LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lPa
             mouseUp.y = GET_Y_LPARAM(lParameter);
             InvalidateRect(window, NULL, TRUE);
             UpdateWindow(window);
+
+            partialScreenshot.left = MIN(mouseDown.x, mouseUp.x);
+            partialScreenshot.right = MAX(mouseDown.x, mouseUp.x);
+
+            partialScreenshot.top = MIN(mouseDown.y, mouseUp.y);
+            partialScreenshot.bottom = MAX(mouseDown.y, mouseUp.y);
+
+            screenshotWidth = partialScreenshot.right - partialScreenshot.left;
+            screenshotHeight = partialScreenshot.bottom - partialScreenshot.top;
+            screenshotArea = screenshotWidth * screenshotHeight;
+
             break;
 
 
@@ -195,7 +210,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
                         DispatchMessage(&message);
                     }
 
-                    if (!saveScreenshot) {
+                    if (!saveScreenshot || screenshotWidth < 1 || screenshotHeight < 1) {
                         return 0;
                     }
 
@@ -220,11 +235,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE previousInstance, LPSTR command
                         DWORD bytesWritten = 0;
                         fileWritten = WriteFile(imageFile, &bitmapFileHeader, sizeof(bitmapFileHeader), &bytesWritten, NULL);
                         screenBitmapHeader.biHeight = SCREEN_HEIGHT;    /* Reassign positive height before writing bitmap info out to a file. */
+
+                        screenBitmapHeader.biWidth = screenshotWidth;
+                        screenBitmapHeader.biHeight = screenshotHeight;
                         fileWritten = WriteFile(imageFile, &screenBitmapHeader, sizeof(screenBitmapHeader), &bytesWritten, NULL);
 
                         DWORD imageBytesWritten = 0;
-                        for (int y = SCREEN_HEIGHT - 1; y >= 0; y--) {
-                            fileWritten = WriteFile(imageFile, &screenCaptureBits[y * SCREEN_WIDTH + 0], SCREEN_WIDTH * sizeof(screenCaptureBits[0]), &bytesWritten, NULL);
+                        for (int y = partialScreenshot.bottom; y >= partialScreenshot.top; y--) {
+                            fileWritten = WriteFile(imageFile, &screenCaptureBits[y * SCREEN_WIDTH + partialScreenshot.left], screenshotWidth * sizeof(screenCaptureBits[0]), &bytesWritten, NULL);
                             imageBytesWritten += bytesWritten;
                         }
                         assert(imageBytesWritten == screenBitmapHeader.biSizeImage);
