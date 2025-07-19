@@ -26,6 +26,8 @@ uint32_t *screenCaptureBits;
 POINT mouseDown = { .x = -1, .y = -1 };
 POINT mouseUp = { .x = -1, .y = -1 };
 
+BOOL leftMouseDown = FALSE;
+
 BOOL saveScreenshot = FALSE;
 RECT partialScreenshot = { .left = -1, .top = -1, .right = -1, .bottom = -1 };
 int screenshotWidth = -1;
@@ -82,11 +84,25 @@ LRESULT WindowProcedure(HWND window, UINT message, WPARAM wParameter, LPARAM lPa
             } break;
 
         case WM_LBUTTONDOWN:
+            leftMouseDown = TRUE;
+
             mouseDown.x = GET_X_LPARAM(lParameter);
             mouseDown.y = GET_Y_LPARAM(lParameter);
             break;
 
+        case WM_MOUSEMOVE:
+            if (leftMouseDown) {
+                mouseUp.x = GET_X_LPARAM(lParameter);
+                mouseUp.y = GET_Y_LPARAM(lParameter);
+                InvalidateRect(window, NULL, TRUE);
+                UpdateWindow(window);
+            }
+
+            break;
+
         case WM_LBUTTONUP:
+            leftMouseDown = FALSE;
+
             mouseUp.x = GET_X_LPARAM(lParameter);
             mouseUp.y = GET_Y_LPARAM(lParameter);
             InvalidateRect(window, NULL, TRUE);
